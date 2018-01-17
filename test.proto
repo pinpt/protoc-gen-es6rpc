@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package test;
+
+// HelloRequest is a test Hello request
+message HelloRequest {
+	int32 foo = 1;
+	string bar = 2;
+}
+
+// HelloRequest is a test Hello request
+message HelloResponse {
+	string message = 1;
+}
+
+// Test is a test service example
+service Test {
+	// Hello is a test method
+	rpc Hello(HelloRequest) returns (HelloResponse);
+}
