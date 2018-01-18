@@ -50,7 +50,7 @@ func getFieldPath(messageIndex int, fieldIndex int) string {
 func messageComment(index int, comments map[string]*descriptor.SourceCodeInfo_Location) string {
 	k := getMessagePath(index)
 	c := comments[k]
-	return strings.TrimRight(c.GetLeadingComments(), "\n")
+	return strings.Replace(strings.TrimSpace(c.GetLeadingComments()), "\n", "\n// ", -1)
 }
 
 func buildArgsObject() string {
@@ -103,31 +103,39 @@ func main() {
 	}
 	date := time.Now().Format(time.ANSIC)
 	var buf bytes.Buffer
-	for index, filename := range req.FileToGenerate {
-		buf.Reset()
-		htmpl.Execute(&buf, map[string]string{
-			"filename": filename,
-			"date":     date,
-		})
-		header := buf.String()
-		buf.Reset()
-		for sindex, service := range req.ProtoFile[index].Service {
-			comments := extractComments(req.ProtoFile[index])
-			err := tmpl.Execute(&buf, map[string]interface{}{
-				"header":    header,
-				"apiprefix": apiprefix,
-				"filename":  filename,
-				"service":   service,
-				"comment":   strings.TrimRight(comments[getServicePath(sindex)].GetLeadingComments(), "\n"),
-				"comments":  comments,
+	filesToGenerate := make(map[string]bool)
+	for _, fn := range req.GetFileToGenerate() {
+		filesToGenerate[fn] = true
+	}
+	for _, protofile := range req.ProtoFile {
+		if filesToGenerate[protofile.GetName()] {
+			filename := protofile.GetName()
+			log.Printf("incoming file %s\n", filename)
+			buf.Reset()
+			htmpl.Execute(&buf, map[string]string{
+				"filename": filename,
+				"date":     date,
 			})
-			if err != nil {
-				log.Fatalln(err)
+			header := buf.String()
+			for sindex, service := range protofile.Service {
+				buf.Reset()
+				comments := extractComments(protofile)
+				err := tmpl.Execute(&buf, map[string]interface{}{
+					"header":    header,
+					"apiprefix": apiprefix,
+					"filename":  filename,
+					"service":   service,
+					"comment":   strings.TrimRight(comments[getServicePath(sindex)].GetLeadingComments(), "\n"),
+					"comments":  comments,
+				})
+				if err != nil {
+					log.Fatalln(err)
+				}
+				resp.File = append(resp.File, &plugin.CodeGeneratorResponse_File{
+					Name:    strp(service.GetName() + ".js"),
+					Content: strp(buf.String()),
+				})
 			}
-			resp.File = append(resp.File, &plugin.CodeGeneratorResponse_File{
-				Name:    strp(service.GetName() + ".js"),
-				Content: strp(buf.String()),
-			})
 		}
 	}
 	ob, err := proto.Marshal(resp)
