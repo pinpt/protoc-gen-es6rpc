@@ -30,6 +30,9 @@ install: build
 
 .PHONY: help
 
+test:
+	@protoc -I. --es6rpc_out=:./build -I proto *.proto
+
 help:
 	@echo -e '\033[0;35mUsage: make <TARGETS>\033[0m'
 	@echo ''

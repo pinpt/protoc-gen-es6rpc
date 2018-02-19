@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package es6rpc;
+
+import "google/protobuf/descriptor.proto";
+
+message FieldOptions {
+   string value = 1;
+}
+
+extend google.protobuf.FieldOptions {
+  FieldOptions default = 2031;
+}
